@@ -13,15 +13,15 @@ accessibility, print, and what the build ships.
 | Focus gets lost or trapped | keyboard and screen-reader users | E2E `focus-order`, `focus-return`, `menu`, `controls` |
 | Accessibility regressions | WCAG 2.2 AA is a requirement, not a goal | axe on every view, in every theme and key mode (`a11y`, `a11y-matrix`), plus targeted checks: contrast, target size, text spacing, reduced motion, forced colours |
 | Layout breaks on a device the author does not own | recruiters open links on phones and small laptops | relational layout checks at many viewports (`fit`, `screens-fit`, `text-floors`, `mobile*`) |
-| The page jank or animates wrongly | the animation is the product's character | motion and smoothness gates in the private harness (frame-time budgets, CPU throttling) |
+| The page janks or animates wrongly | the animation is the product's character | motion and smoothness gates in the private harness (frame-time budgets, CPU throttling) |
 | Something ships that must not | personal data, third-party assets, a weakened CSP | privacy and CSP specs here; build-output scan in the private harness |
 | `/cv/` fails without JavaScript or in print | ATS crawlers, printing, slow devices | `cv`, `cv-nojs`, `cv-print` |
 
 ## 2. The pyramid
 
-- **~1,225 unit and component tests (Vitest).** Layout maths, the state reducer and URL routes, the key map,
+- **~1,350 unit and component tests (Vitest).** Layout maths, the state reducer and URL routes, the key map,
   content validation (strict schemas, the privacy pattern), components in jsdom. Fast and exhaustive.
-- **~319 E2E tests (Playwright)** on the static build, of which this repository is the black-box subset
+- **~650 E2E test runs (Playwright)** on the static build, most of which this repository ports to a black-box suite
   that runs against production.
 - **9 verification gates**, which check whole-build properties: two reproducible builds, layout geometry,
   background brightness, motion curves, frame-time smoothness, accessibility, Lighthouse (median of 3),

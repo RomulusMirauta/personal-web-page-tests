@@ -151,15 +151,25 @@ test.describe('header dots', () => {
       await openApp(page, { theme });
       await settle(page);
       const { dots: centres, colours } = await page.evaluate(() => {
-        const rgb = (c: string) => (c.match(/\d+/g) ?? []).slice(0, 3).map(Number);
+        const rgba = (c: string) => {
+          const [r, g, b, a = 1] = (c.match(/[\d.]+/g) ?? []).map(Number);
+          return [r, g, b, a];
+        };
         // Resolved where the dots are drawn (their colour scheme picks the palette's side).
         const probe = document.createElement('span');
         document.querySelector('header[data-hud] ol li')!.append(probe);
         const system = (c: string) => {
           probe.style.color = c;
-          return rgb(getComputedStyle(probe).color);
+          return rgba(getComputedStyle(probe).color);
         };
-        const colours = { text: system('CanvasText'), highlight: system('Highlight') };
+        // A system colour may resolve translucent: Linux Chromium's forced-colours Highlight is
+        // rgba(0, 230, 255, 0.8), painted over Canvas. Windows' palette is opaque.
+        const canvas = system('Canvas').slice(0, 3);
+        const painted = (c: string) => {
+          const [r, g, b, a] = system(c);
+          return [r, g, b].map((v, k) => Math.round(v * a + canvas[k] * (1 - a)));
+        };
+        const colours = { text: painted('CanvasText'), highlight: painted('Highlight') };
         probe.remove();
         return {
           colours,

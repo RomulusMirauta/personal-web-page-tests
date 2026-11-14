@@ -9,8 +9,8 @@ against the production URL on its own, without any application code. It runs eve
 
 | | |
 |---|---|
-| Tests | **421** Playwright tests in 45 spec files (369 desktop, 52 phone) + 31 unit tests |
-| Run time | ~3 min for the full suite against production on 8 workers |
+| Tests | **421** Playwright tests in 46 spec files (369 desktop, 52 phone) + 31 unit tests |
+| Run time | ~3 min for the full suite against production locally on 8 workers; ~4 min on CI (4 shards) |
 | Browsers | Chromium desktop 1920×1080 · Chromium phone 411×776 @ DPR 2.625, touch |
 | Tiers | `@smoke` 12 · `@critical` 63 · `@a11y` 119 · `@mobile` 33 |
 
@@ -18,8 +18,8 @@ against the production URL on its own, without any application code. It runs eve
 
 | Layer | Size | What it covers |
 |---|---|---|
-| Unit / component (Vitest) | ~1,225 tests | pure layout and state logic, content validation, components in jsdom |
-| E2E (Playwright) | ~319 tests | user journeys on the static build; **this repo is its public, black-box subset** |
+| Unit / component (Vitest) | ~1,350 tests | pure layout and state logic, content validation, components in jsdom |
+| E2E (Playwright) | ~650 test runs | user journeys on the static build, white-box helpers included; **this repo is a black-box port of most of them, running against production** |
 | Verification gates | 9 gates | build-level checks no single test can make (below) |
 
 The nine gates of the verification harness, one line each:
@@ -45,7 +45,7 @@ The nine gates of the verification harness, one line each:
 - **Deterministic animation.** The production build ships a tiny test-hook API, active only with `?test=1`.
   It exposes the app state and a **manual animation clock**, so a test runs a transition to its end in one
   call instead of sleeping, and waits on state instead of time.
-- **No flaky tests.** Every spec passed 3 repeated runs on 8 workers before it was merged. A flaky test gets
+- **No flaky tests.** Before it was added here, every spec passed 3 repeated local runs on 8 workers. A flaky test gets
   fixed or dropped. CI retries once, and Playwright reports the retry as *flaky*, so it is visible.
 - **Content-robust.** Section order, categories and skills are read from the live page, so a content update
   does not break the suite.
