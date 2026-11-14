@@ -1,0 +1,29 @@
+{
+  "name": "playwright-portfolio",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Black-box Playwright E2E suite for Romulus Mirăuță's portfolio app (https://romulus-mirauta.vercel.app).",
+  "license": "MIT",
+  "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "test": "playwright test",
+    "test:smoke": "playwright test --grep @smoke",
+    "test:critical": "playwright test --grep \"@smoke|@critical\"",
+    "test:a11y": "playwright test --grep @a11y",
+    "test:unit": "playwright test --config playwright.unit.config.ts",
+    "report": "playwright show-report",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@axe-core/playwright": "4.14.0",
+    "@playwright/test": "1.65.0",
+    "@types/node": "^24.0.0",
+    "typescript": "6.0.3"
+  },
+  "overrides": {
+    "playwright-core": "1.65.0"
+  }
+}

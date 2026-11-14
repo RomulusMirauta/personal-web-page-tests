@@ -1,0 +1,127 @@
+# E2E against the live app, in tiers:
+#   push / pull request  -> unit tests + the fast tier (@smoke and @critical), one job
+#   daily schedule       -> the full suite, sharded over 4 runners, one merged HTML report
+#   manual run           -> pick the tier and the URL (e.g. a preview deployment)
+# Every run uploads its HTML report (traces, screenshots and videos of failures inside).
+name: e2e
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  schedule:
+    - cron: '17 5 * * *' # daily, 05:17 UTC
+  workflow_dispatch:
+    inputs:
+      tier:
+        description: 'smoke (smoke + critical) or full'
+        type: choice
+        options: [smoke, full]
+        default: full
+      base_url:
+        description: 'Deployment to test'
+        default: 'https://romulus-mirauta.vercel.app'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: e2e-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  BASE_URL: ${{ inputs.base_url || 'https://romulus-mirauta.vercel.app' }}
+
+jobs:
+  fast:
+    name: unit + smoke/critical
+    if: github.event_name == 'push' || github.event_name == 'pull_request' || inputs.tier == 'smoke'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - run: npm run typecheck
+      - run: npm run test:unit
+      - run: npx playwright test --grep "@smoke|@critical"
+      - uses: actions/upload-artifact@v4
+        if: ${{ !cancelled() }}
+        with:
+          name: playwright-report-fast
+          path: playwright-report/
+          retention-days: 14
+
+  full:
+    name: full suite (shard ${{ matrix.shard }}/4)
+    if: github.event_name == 'schedule' || inputs.tier == 'full'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3, 4]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - run: npx playwright test --shard=${{ matrix.shard }}/4 --reporter=blob
+      - uses: actions/upload-artifact@v4
+        if: ${{ !cancelled() }}
+        with:
+          name: blob-report-${{ matrix.shard }}
+          path: blob-report/
+          retention-days: 3
+
+  report:
+    name: merge reports
+    needs: full
+    if: ${{ !cancelled() && needs.full.result != 'skipped' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - uses: actions/download-artifact@v4
+        with:
+          path: all-blob-reports
+          pattern: blob-report-*
+          merge-multiple: true
+      - run: npx playwright merge-reports --reporter html ./all-blob-reports
+      - uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report-full
+          path: playwright-report/
+          retention-days: 14
+      # Optional: publish the latest scheduled report on GitHub Pages
+      # (enable Pages with "GitHub Actions" as the source first).
+      - uses: actions/upload-pages-artifact@v3
+        if: github.event_name == 'schedule' && vars.PUBLISH_REPORT == 'true'
+        with:
+          path: playwright-report/
+
+  pages:
+    name: publish report
+    needs: report
+    if: github.event_name == 'schedule' && vars.PUBLISH_REPORT == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - id: deploy
+        uses: actions/deploy-pages@v4
