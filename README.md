@@ -1,5 +1,7 @@
 # Playwright E2E suite for a portfolio app
 
+<img src="https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fromulus-mirauta.goatcounter.com%2Fcounter%2FTOTAL.json&amp;query=%24.count&amp;label=app%20views&amp;color=1f6f5c&amp;labelColor=232826&amp;cacheSeconds=600" alt="App views (total)">
+
 Black-box end-to-end tests for my portfolio app, **[romulus-mirauta.vercel.app](https://romulus-mirauta.vercel.app)**:
 an animated, keyboard-first "business card" whose landing page is a radial skill wheel, with Profile, QA Lab,
 Experience and Projects screens and a printable, no-JavaScript `/cv/` page.
