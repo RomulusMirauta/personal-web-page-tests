@@ -100,11 +100,6 @@ Projects: `desktop-chromium` runs everything except `@mobile`; `phone-chromium` 
 device-independent `@all-devices` checks. The phone viewport is the space a real phone browser leaves for
 the page (with its address and navigation bars), not the full screen size.
 
-## Known issues the suite tracks
-
-Two tests are marked `known issue`: small text on the phone's player card and on the Profile screen at
-laptop sizes. They pin the current state and turn red once it is fixed.
-
 ## License
 
 The test code is MIT-licensed (see [LICENSE](LICENSE)). The app under test, its content and its design
