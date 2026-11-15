@@ -1,7 +1,7 @@
 /**
  * The Controls screen: ? or F1 opens a modal list of every key, like a help screen; Esc, ? or F1
  * close it and focus returns. Plus two more keys: F (full screen) and D (download the CV, as
- * Profile's Download CV button does).
+ * the Contact screen's Download CV button does).
  */
 import type { Page } from '@playwright/test';
 import { arcPoint, categoryIds, dispatch, expectHashSettles, openApp, settle } from './support/app';
@@ -407,12 +407,12 @@ test.describe('F full screen, D download CV', () => {
     expect(await page.evaluate(() => (window as unknown as { __calls: string[] }).__calls)).toHaveLength(2);
   });
 
-  test('D downloads the CV from any screen, the same file as Profile’s Download CV button', async ({ page }) => {
+  test('D downloads the CV from any screen, the same file as the Contact screen’s Download CV button', async ({ page }) => {
     await openApp(page);
     expect((await state(page)).screen).toBe('skills');
     const [download] = await Promise.all([page.waitForEvent('download'), page.keyboard.press('d')]);
     expect(download.suggestedFilename()).toMatch(/\.pdf$/);
-    await dispatch(page, { t: 'tab/set', screen: 'profile' });
+    await dispatch(page, { t: 'tab/set', screen: 'contact' });
     const button = page.getByRole('link', { name: /download cv/i });
     const href = await button.getAttribute('href');
     expect(new URL(download.url()).pathname).toBe(new URL(href!, page.url()).pathname);

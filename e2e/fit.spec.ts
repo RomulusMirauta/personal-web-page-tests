@@ -6,7 +6,7 @@ import { expect, newContext, test } from './support/test';
  * Things that must fit their boxes on desktop: the wheel's nodes stay below the header band, the
  * detail text column fits without scrolling (extra chips fold into a "+N" button), the player card's
  * text is never cut at common window sizes, the Experience timeline signals that it scrolls, and the
- * Profile's buttons stay inside their column.
+ * Contact screen's CV and contact card buttons stay inside their column.
  */
 
 const band = (page: Page) => page.locator('header[data-hud] nav').first();
@@ -161,13 +161,14 @@ test('the Experience timeline fades the edge that hides content; the footer offe
   expect(hints.filter((t) => /scroll/i.test(t))).toHaveLength(1);
 });
 
-test('Profile: the CV and contact buttons stay inside their column', async ({ page }) => {
+test('Contact: the CV and contact card buttons stay inside their column and end on its right edge', async ({ page }) => {
   await openApp(page);
-  await dispatch(page, { t: 'tab/set', screen: 'profile' });
+  await dispatch(page, { t: 'tab/set', screen: 'contact' });
   await settle(page);
   await cssAtRest(page);
   const r = await page.evaluate(() => {
-    const buttons = [...document.querySelectorAll('a[download]')].map((a) => a.getBoundingClientRect());
+    // The CV and contact card row (Download CV, the vCard, the printable CV): every link of the row.
+    const buttons = [...document.querySelector('a[download]')!.parentElement!.querySelectorAll('a')].map((a) => a.getBoundingClientRect());
     const column = document.querySelector('a[download]')!.closest('[data-scroll]')!;
     const box = column.getBoundingClientRect();
     const cs = getComputedStyle(column);
@@ -182,4 +183,5 @@ test('Profile: the CV and contact buttons stay inside their column', async ({ pa
   expect(r.count).toBeGreaterThan(0);
   expect(r.right).toBeLessThanOrEqual(r.contentRight + 1);
   expect(r.left).toBeGreaterThanOrEqual(r.contentLeft - 1);
+  expect(Math.abs(r.right - r.contentRight), 'the row ends on the content’s right edge').toBeLessThanOrEqual(1);
 });

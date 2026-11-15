@@ -47,13 +47,17 @@ test.describe('names Chromium reads on the screens', { tag: '@a11y' }, () => {
     await openApp(page);
     const screens = (await screenOrder(page)).filter((s) => s !== 'skills');
     expect(screens.length).toBeGreaterThan(0);
+    const found: Record<string, string[]> = {};
     for (const screen of screens) {
       await dispatch(page, { t: 'tab/set', screen });
       await settle(page);
       const rows = await mainNames(page);
       expect(rows.length, `${screen}: named nodes`).toBeGreaterThan(3);
-      expect(await shouted(page, rows), screen).toEqual([]);
+      const words = await shouted(page, rows);
+      if (words.length) found[screen] = words;
     }
+    // Every screen is read before the check, so a failure lists all of them at once.
+    expect(found, 'screen → words Chromium reads in capitals').toEqual({});
   });
 
   test('project links name their action and target, and say they open a new tab', async ({ page }) => {

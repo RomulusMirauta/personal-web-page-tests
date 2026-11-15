@@ -1,5 +1,5 @@
 import type { Page } from '@playwright/test';
-import { appState, categoryIds, dispatch, expectMode, focused, openApp, screenOrder, settle, ui } from './support/app';
+import { appState, arcPoint, categoryIds, dispatch, expectMode, focused, openApp, screenOrder, settle, ui } from './support/app';
 import { expect, test } from './support/test';
 
 /**
@@ -125,6 +125,16 @@ test.describe('Display options menu', () => {
           await expect(page.getByRole('dialog', { name: 'Controls' })).toBeVisible();
           await page.keyboard.press('Escape');
           await expect(page.getByRole('dialog', { name: 'Controls' })).toHaveCount(0);
+          continue;
+        }
+        if (name === 'Hints') {
+          // Not app state: the gesture hints switch, kept on the device. Its pressed state toggles.
+          const button = rows.nth(i).locator(':scope > button');
+          await expect(button).toHaveAttribute('aria-pressed', 'true');
+          await page.mouse.click(to.x, to.y);
+          await expect(button, `${name}: the click toggled it`).toHaveAttribute('aria-pressed', 'false');
+          await page.mouse.click(to.x, to.y);
+          await expect(button).toHaveAttribute('aria-pressed', 'true');
           continue;
         }
         const before = await settings(page);
@@ -281,7 +291,7 @@ test.describe('Display options menu', () => {
     });
   }
 
-  test('Shift+Tab out of a key-pinned menu and Tab out of a click-pinned one also close it; a mouse pin outlives a click elsewhere', { tag: '@a11y' }, async ({ page }) => {
+  test('Shift+Tab out of a key-pinned menu and Tab out of a click-pinned one also close it; a click elsewhere closes a mouse pin', { tag: '@a11y' }, async ({ page }) => {
     await openApp(page);
     await dispatch(page, { t: 'tab/set', screen: 'experience' });
     await settle(page);
@@ -295,10 +305,13 @@ test.describe('Display options menu', () => {
     expect((await focused(page)).text).toMatch(/next section/i);
     await expect(trigger(page)).toHaveAttribute('aria-expanded', 'false');
 
-    // Pinned with the mouse: a click elsewhere on the page keeps it open, keyboard exit closes it.
+    // Pinned with the mouse: a click elsewhere on the page closes it; pinned again, a keyboard exit
+    // closes it too.
     await trigger(page).click();
     await expect(trigger(page)).toHaveAttribute('aria-expanded', 'true');
     await page.mouse.click(5, 540);
+    await expect(trigger(page), 'a click elsewhere closes it').toHaveAttribute('aria-expanded', 'false');
+    await trigger(page).click();
     await expect(trigger(page)).toHaveAttribute('aria-expanded', 'true');
     await trigger(page).focus();
     await page.keyboard.press('Tab');
@@ -467,5 +480,34 @@ test.describe('Display options menu', () => {
     await expect(trigger(page)).toHaveAttribute('aria-expanded', 'true');
     await page.keyboard.press('Tab');
     expect((await focused(page)).text, 'Tab goes on from City, past the unavailable row').toMatch(/^hide interface/i);
+  });
+});
+
+test.describe('Display options menu on a phone', () => {
+  test('a tap outside the open menu closes it and never reaches the wheel behind it; a hash change closes it', { tag: '@mobile' }, async ({ page }) => {
+    await openApp(page);
+    await settle(page);
+    const [cat] = await categoryIds(page);
+    const point = await arcPoint(page, cat);
+    const tapTrigger = async () => {
+      const box = (await trigger(page).boundingBox())!;
+      await page.touchscreen.tap(box.x + box.width / 2, box.y + box.height / 2);
+      await expect(trigger(page)).toHaveAttribute('aria-expanded', 'true');
+    };
+    await tapTrigger();
+    await page.touchscreen.tap(point.x, point.y);
+    await expect(trigger(page), 'the tap outside closes the menu').toHaveAttribute('aria-expanded', 'false');
+    // A negative window: the tap that closed the menu must not preview the category behind it.
+    await page.waitForTimeout(300);
+    expect((await appState(page)).mode.kind, 'no category preview behind the menu').toBe('idle');
+    expect(await page.evaluate(() => location.hash)).not.toMatch(/skills\//);
+
+    // With the menu closed the same tap previews the category, as before.
+    await page.touchscreen.tap(point.x, point.y);
+    await expectMode(page, 'hover', cat);
+
+    await tapTrigger();
+    await page.evaluate(() => (location.hash = '#/profile'));
+    await expect(trigger(page), 'a hash change closes the menu').toHaveAttribute('aria-expanded', 'false');
   });
 });

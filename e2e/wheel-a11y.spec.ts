@@ -11,7 +11,7 @@ async function cursorOf(locator: Locator): Promise<string> {
   return cursor;
 }
 
-async function show(page: Page, screen: 'profile' | 'experience'): Promise<void> {
+async function show(page: Page, screen: 'profile' | 'contact' | 'experience'): Promise<void> {
   await dispatch(page, { t: 'tab/set', screen });
   await expect(page.locator(`[data-screen="${screen}"]`)).toBeVisible();
 }
@@ -83,9 +83,12 @@ test.describe('wheel accessibility and render hygiene', () => {
     await show(page, 'profile');
     const about = page.getByRole('region', { name: 'About' });
     expect(await cursorOf(about.locator('p').first())).toBe('text');
-    expect(await cursorOf(page.getByRole('region', { name: 'Contact' }).getByRole('link').first())).toBe('custom-pointer');
     // A section's title band is a label, not prose.
     expect(await cursorOf(about.getByRole('heading'))).toBe('custom-arrow');
+
+    // The ways to reach the owner are links: the pointer.
+    await show(page, 'contact');
+    expect(await cursorOf(page.getByRole('region', { name: /^contact$/i }).getByRole('link').first())).toBe('custom-pointer');
 
     await show(page, 'experience');
     const entry = page.locator('li[data-kind]').first();

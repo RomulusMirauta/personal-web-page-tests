@@ -1,5 +1,5 @@
 import type { Browser, Page } from '@playwright/test';
-import { categoryIds, dispatch, openApp, screenOrder, settle, ui } from './support/app';
+import { categoryIds, dispatch, openApp, screenOrder, sectionTitleText, settle, ui } from './support/app';
 import { expect, newContext, test } from './support/test';
 
 /**
@@ -44,7 +44,7 @@ async function show(page: Page, screen: string): Promise<string> {
   await dispatch(page, { t: 'tab/set', screen });
   await settle(page);
   await page.waitForFunction(() => document.getAnimations().every((a) => a.playState !== 'running' || a.effect?.getTiming().iterations === Infinity));
-  const name = ((await ui.sectionTitle(page).textContent()) ?? '').trim();
+  const name = await sectionTitleText(page);
   return page.evaluate((name) => {
     const region = [...document.querySelectorAll('section[aria-label]')].find((s) => s.getAttribute('aria-label')!.toLowerCase() === name.toLowerCase());
     if (!region) throw new Error(`no region named ${name}`);

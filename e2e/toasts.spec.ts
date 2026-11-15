@@ -447,7 +447,7 @@ test.describe('toasts', () => {
     expect((await shown(page)).cap).toBeNull();
   });
 
-  test("D and Profile's Download CV button confirm the PDF download; T, C and H show nothing", async ({ page }) => {
+  test("D and the Contact screen's Download CV button confirm the PDF download; T, C and H show nothing", async ({ page }) => {
     await openApp(page);
     await settle(page);
     for (const key of ['t', 'c', 'c', 't']) {
@@ -460,7 +460,7 @@ test.describe('toasts', () => {
     expect(await shown(page)).toEqual({ text: 'DOWNLOADING CV', cap: 'D' });
     await expect(status(page)).toHaveText('Downloading CV');
     await expect(plate(page)).toHaveCount(0, { timeout: 5000 });
-    await dispatch(page, { t: 'tab/set', screen: 'profile' });
+    await dispatch(page, { t: 'tab/set', screen: 'contact' });
     download = page.waitForEvent('download');
     await page.getByRole('link', { name: 'Download CV' }).click();
     await download;

@@ -165,7 +165,8 @@ test.describe('naming', { tag: '@a11y' }, () => {
     }
 
     await page.goto('/cv/');
-    await expect(page).toHaveTitle(/^CV\b/);
+    // "<name> — <job title> · CV": the owner and the role first, what the page is last.
+    await expect(page).toHaveTitle(/^\S.* — \S.* · CV$/);
     const title = await page.title();
     await expect(page.locator('meta[property="og:title"]')).toHaveAttribute('content', exact(title));
     await expect(page.locator('meta[name="twitter:title"]')).toHaveAttribute('content', exact(title));

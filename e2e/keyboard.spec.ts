@@ -345,6 +345,13 @@ test.describe('keyboard: state and focus edge cases', () => {
     await page.keyboard.press('e'); // focus moves to the new screen's title
     await expect.poll(async () => (await appState(page)).screen).not.toBe('skills');
     const screen = (await appState(page)).screen;
+    // A route change closes the menu: pin it again on the new screen.
+    await expect(trigger).toHaveAttribute('aria-expanded', 'false');
+    await trigger.click();
+    await page.mouse.move(900, 900);
+    await expect(trigger).toHaveAttribute('aria-expanded', 'true');
+    // Focus elsewhere (on the page), as after a shortcut that moved it: Esc still closes the menu first.
+    await page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur());
     await page.keyboard.press('Escape');
     await expect(trigger).toHaveAttribute('aria-expanded', 'false');
     expect((await appState(page)).screen, 'the first Esc only closes the menu').toBe(screen);

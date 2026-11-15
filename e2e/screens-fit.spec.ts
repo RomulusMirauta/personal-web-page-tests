@@ -1,4 +1,4 @@
-import { dispatch, openApp, screenOrder, sel, settle, ui } from './support/app';
+import { dispatch, openApp, screenOrder, sectionTitleText, sel, settle, ui } from './support/app';
 import { expect, newContext, test } from './support/test';
 
 /**
@@ -27,7 +27,7 @@ for (const [w, h] of SIZES) {
       await dispatch(page, { t: 'tab/set', screen });
       await settle(page);
       // The screen's region carries the name the header shows for it.
-      const name = ((await ui.sectionTitle(page).textContent()) ?? '').trim();
+      const name = await sectionTitleText(page);
       // Cards and tiles slide in (CSS): measure once they rest.
       await page.waitForFunction(() => document.getAnimations().every((a) => a.playState !== 'running' || a.effect?.getTiming().iterations === Infinity));
       const r = await page.evaluate((name) => {

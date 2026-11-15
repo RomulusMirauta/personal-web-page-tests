@@ -31,7 +31,7 @@ test.describe('smoke', { tag: '@smoke' }, () => {
     for (const [i, screen] of screens.entries()) {
       if (screen === 'skills') continue;
       await dispatch(page, { t: 'tab/set', screen });
-      await expect(ui.sectionTitle(page)).toHaveText(new RegExp(`^${names[i]}$`, 'i'));
+      await expect(ui.sectionTitle(page)).toHaveAccessibleName(new RegExp(`^${names[i]}$`, 'i'));
       await expect(ui.screen(page, new RegExp(`^${names[i]}$`, 'i'))).toBeVisible();
       await expect(page).toHaveURL(new RegExp(`#/${screen}$`));
     }
@@ -58,14 +58,14 @@ test.describe('smoke', { tag: '@smoke' }, () => {
     const start = screens.indexOf('skills');
     const dots = ui.sectionDots(page);
     await expect(dots.nth(start)).toHaveAttribute('data-active', '');
-    await expect(ui.sectionTitle(page)).toHaveText(new RegExp(`^${names[start]}$`, 'i'));
+    await expect(ui.sectionTitle(page)).toHaveAccessibleName(new RegExp(`^${names[start]}$`, 'i'));
     await expect(ui.prevSection(page)).toHaveAccessibleName(new RegExp(names[(start - 1 + n) % n], 'i'));
     await expect(ui.nextSection(page)).toHaveAccessibleName(new RegExp(names[(start + 1) % n], 'i'));
     // A full lap forwards: each section in turn, then back to Skills.
     for (let step = 1; step <= n; step++) {
       const i = (start + step) % n;
       await ui.nextSection(page).click();
-      await expect(ui.sectionTitle(page)).toHaveText(new RegExp(`^${names[i]}$`, 'i'));
+      await expect(ui.sectionTitle(page)).toHaveAccessibleName(new RegExp(`^${names[i]}$`, 'i'));
       await expect.poll(async () => (await appState(page)).screen).toBe(screens[i]);
       await expect(dots.nth(i)).toHaveAttribute('data-active', '');
     }

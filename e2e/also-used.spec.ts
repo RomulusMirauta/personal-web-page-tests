@@ -137,8 +137,9 @@ for (const device of [
 /**
  * Across the hard wheel, every fold is expanded with Enter. Its text and accessible name say what
  * it hides ("+N" for project or employer chips, "Also used +N" for tools, both joined by "·" when it
- * hides both; "Show N more", "Show N more tools", "Show N more and M tools"), focus lands on the
- * first chip it shows (a project or employer chip first, else a tool), and that chip's focus ring
+ * hides both); its accessible name starts with that text (label in name) and says what a press shows:
+ * "+N, show N more", "Also used +N, show N more tools", "+N · Also used +M, show N more and M tools".
+ * Focus lands on the first chip it shows (a project or employer chip first, else a tool), and that chip's focus ring
  * shows whole.
  */
 for (const viewport of [
@@ -182,10 +183,10 @@ for (const viewport of [
       const { inGroup } = before.fold;
       const expected =
         tools === 0
-          ? { text: `+${chips}`, name: `Show ${chips} more`, inGroup: false }
+          ? { text: `+${chips}`, name: `+${chips}, show ${chips} more`, inGroup: false }
           : chips === 0
-            ? { text: inGroup ? `+${tools}` : `Also used +${tools}`, name: `Show ${tools} more ${word}`, inGroup }
-            : { text: `+${chips} · Also used +${tools}`, name: `Show ${chips} more and ${tools} ${word}`, inGroup: false };
+            ? { text: inGroup ? `+${tools}` : `Also used +${tools}`, name: `${inGroup ? `+${tools}` : `Also used +${tools}`}, show ${tools} more ${word}`, inGroup }
+            : { text: `+${chips} · Also used +${tools}`, name: `+${chips} · Also used +${tools}, show ${chips} more and ${tools} ${word}`, inGroup: false };
       expect({ ...before.fold, revealed: chips + tools > 0, focus: after.focus, folded: after.fold }, node).toEqual({
         ...expected,
         revealed: true,

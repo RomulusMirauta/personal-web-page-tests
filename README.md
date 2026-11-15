@@ -3,18 +3,18 @@
 <p><br><img src="https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fromulus-mirauta.goatcounter.com%2Fcounter%2FTOTAL.json%3Fstart%3Dweek&amp;query=%24.count&amp;label=Views%20per%20week&amp;color=1f6f5c&amp;labelColor=232826&amp;cacheSeconds=600" alt="Views per week" width="174"> <img src="https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fromulus-mirauta.goatcounter.com%2Fcounter%2FTOTAL.json%3Fstart%3Dmonth&amp;query=%24.count&amp;label=per%20month&amp;color=1f6f5c&amp;labelColor=232826&amp;cacheSeconds=600" alt="per month" width="130"> <img src="https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fromulus-mirauta.goatcounter.com%2Fcounter%2FTOTAL.json%3Fstart%3Dyear&amp;query=%24.count&amp;label=per%20year&amp;color=1f6f5c&amp;labelColor=232826&amp;cacheSeconds=600" alt="per year" width="116"> <img src="https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fromulus-mirauta.goatcounter.com%2Fcounter%2FTOTAL.json&amp;query=%24.count&amp;label=total&amp;color=1f6f5c&amp;labelColor=232826&amp;cacheSeconds=600" alt="total" width="84"><br><br></p>
 
 Black-box end-to-end tests for my portfolio app, **[romulus-mirauta.vercel.app](https://romulus-mirauta.vercel.app)**:
-an animated, keyboard-first "business card" whose landing page is a radial skill wheel, with Profile, QA Lab,
-Experience and Projects screens and a printable, no-JavaScript `/cv/` page.
+an animated, keyboard-first "business card" whose landing page is a radial skill wheel, with Profile, Contact,
+QA Lab, Experience, Education and Projects screens and a printable, no-JavaScript `/cv/` page.
 
 The app's source is private. This repository is the **E2E layer** of its test suite, ported so that it runs
 against the production URL on its own, without any application code. It runs every day in GitHub Actions.
 
 | | |
 |---|---|
-| Tests | **421** Playwright tests in 46 spec files (369 desktop, 52 phone) + 31 unit tests |
+| Tests | **444** Playwright tests in 49 spec files (385 desktop, 59 phone) + 31 unit tests |
 | Run time | ~3 min for the full suite against production locally on 8 workers; ~4 min on CI (4 shards) |
 | Browsers | Chromium desktop 1920×1080 · Chromium phone 411×776 @ DPR 2.625, touch |
-| Tiers | `@smoke` 12 · `@critical` 63 · `@a11y` 119 · `@mobile` 33 |
+| Tiers | `@smoke` 12 · `@critical` 67 · `@a11y` 122 · `@mobile` 40 |
 
 ## The full suite (private repo), in numbers
 
@@ -60,10 +60,10 @@ More detail: [docs/test-strategy.md](docs/test-strategy.md).
 
 | Area | Specs |
 |---|---|
-| Smoke and core journeys | `smoke`, `keyboard`, `history`, `history-origin`, `back-stays`, `chips` |
+| Smoke and core journeys | `smoke`, `intro`, `keyboard`, `history`, `history-origin`, `back-stays`, `chips` |
 | Accessibility | `a11y`, `a11y-matrix` (themes × key modes × laptop sizes), `wheel-a11y`, `focus-order`, `focus-return`, `naming`, `screen-names`, `reduced-motion`, `light-theme`, `text-floors` |
-| Screens and widgets | `experience`, `projects`, `detail`, `spec-card`, `player-card`, `also-used`, `menu`, `controls`, `toasts`, `hidden-ui`, `prefs`, `theme-live` |
-| Pointer and touch | `pointer-intent`, `hub-aim`, `scroll-input`, `scroll-areas`, `mobile`, `mobile-polish` |
+| Screens and widgets | `contact-education`, `experience`, `projects`, `detail`, `spec-card`, `player-card`, `also-used`, `menu`, `controls`, `toasts`, `hidden-ui`, `prefs`, `theme-live` |
+| Pointer and touch | `pointer-intent`, `hub-aim`, `hints`, `scroll-input`, `scroll-areas`, `mobile`, `mobile-polish` |
 | Layout fit | `fit`, `screens-fit`, `line-breaks`, `header`, `header-dots`, `design-rules` |
 | CV, security, privacy | `cv`, `cv-nojs`, `cv-print`, `csp`, `not-found`, `privacy` |
 

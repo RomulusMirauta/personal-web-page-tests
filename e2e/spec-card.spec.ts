@@ -128,6 +128,8 @@ for (const [w, h] of [
             right: box.right - (parseFloat(cs.borderRightWidth) + parseFloat(cs.paddingRight)) * k,
           };
           const els = [...document.querySelectorAll('[data-media-slot] [data-project-name]')];
+          // An em on screen (the stage's scale applied, like the text boxes below).
+          const em = (els.length ? parseFloat(getComputedStyle(els[0]).fontSize) : 16) * k;
           const charRects = (el: Element) => {
             const out: { top: number; left: number; right: number; ch: string }[] = [];
             const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT);
@@ -158,8 +160,10 @@ for (const [w, h] of [
             const right = Math.max(...chars.map((c) => c.right));
             return {
               name: el.textContent!,
-              // A continuation line is indented, so it does not read as the start of another name.
-              hung: lines.slice(1).every((l) => l.left > lines[0].left + 1),
+              // One marker per name, so a wrapped name does not read as two; its next lines start
+              // where its text does, after the marker.
+              marked: getComputedStyle(el, '::before').content !== 'none' && parseFloat(getComputedStyle(el, '::before').borderTopWidth) > 0,
+              aligned: lines.slice(1).every((l) => Math.abs(l.left - lines[0].left) <= 0.15 * em),
               hyphenBreak: lines.slice(0, -1).some((l) => /-$/.test(l.text.trim())),
               // The name's box stays in the card's content box; text running past it is cut there
               // (with an ellipsis) rather than by the card's edge.
@@ -173,7 +177,7 @@ for (const [w, h] of [
           });
         });
         for (const n of names) {
-          if (!n.hung || n.hyphenBreak || !n.inside || !n.moreShown) problems.push(`${node.node}: ${JSON.stringify(n)}`);
+          if (!n.marked || !n.aligned || n.hyphenBreak || !n.inside || !n.moreShown) problems.push(`${node.node}: ${JSON.stringify(n)}`);
         }
       }
       expect(cards, 'spec cards that list projects').toBeGreaterThan(0);

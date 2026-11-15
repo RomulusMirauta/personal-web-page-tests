@@ -63,6 +63,29 @@ test('T, V, A, P and K are saved and restored before hydration; the menu shows t
   expect(await page.evaluate(() => ({ ...localStorage }))).toMatchObject({ theme: 'light', sound: '1', antialias: '1' });
 });
 
+test('smooth edges are on by default for visitors and off by default under ?test=1; a stored choice wins either way', async ({ page }) => {
+  // A visitor (no ?test=1, nothing stored): on before paint, and still on after hydration.
+  expect((await prepaint(page, '/?intro=0&city=poster')).antialias).toBe('on');
+  await page.goto('/?intro=0&city=poster&cursor=0');
+  await page.waitForFunction(() => document.documentElement.dataset.hydrated === '1');
+  await expect(page.locator('html')).toHaveAttribute('data-antialias', 'on');
+  await page.getByRole('button', { name: 'Display options' }).click();
+  expect(await pressed(page, 'Smooth edges')).toBe('true');
+  expect(await page.evaluate(() => localStorage.getItem('antialias')), 'the default is not stored').toBeNull();
+
+  // Test mode: off unless ?aa=1 (stable screenshots).
+  expect((await prepaint(page, appPath())).antialias).toBe('off');
+  expect((await prepaint(page, appPath({ aa: '1' }))).antialias).toBe('on');
+  await openApp(page);
+  expect(await page.evaluate(() => window.__site!.getState().antialias)).toBe(false);
+
+  // A stored off wins over the visitor default; a stored on over the test-mode default.
+  await page.evaluate(() => localStorage.setItem('antialias', '0'));
+  expect((await prepaint(page, '/?intro=0&city=poster')).antialias).toBe('off');
+  await page.evaluate(() => localStorage.setItem('antialias', '1'));
+  expect((await prepaint(page, appPath())).antialias).toBe('on');
+});
+
 test('/cv/ does not arm the intro skip; the app page still plays the intro on a first visit', async ({ page }) => {
   await page.goto('/cv/');
   await expect(page.locator('html')).toHaveAttribute('data-intro', 'skip');
@@ -85,7 +108,8 @@ test('/cv/ does not arm the intro skip; the app page still plays the intro on a 
 
 test('near-miss flags are no flags; ?debugScale needs ?test=1 and is clamped', async ({ page }) => {
   const near = await prepaint(page, '/?theme=lightx&sound=10&test=10&intro=00&aa=10&city=offx');
-  expect(near).toMatchObject({ theme: 'dark', sound: 'off', test: '0', intro: 'play', antialias: 'off', cityView: 'on' });
+  // Not test mode (test=10 is no flag): smooth edges take the visitor default, on.
+  expect(near).toMatchObject({ theme: 'dark', sound: 'off', test: '0', intro: 'play', antialias: 'on', cityView: 'on' });
 
   const radius = async (debugScale: string | null) => {
     await openApp(page, { debugScale });

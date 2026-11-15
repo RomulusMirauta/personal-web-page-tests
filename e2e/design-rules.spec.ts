@@ -7,7 +7,9 @@ import type { Page } from '@playwright/test';
  * - every skill is drawn in one of exactly three level looks, the strongest in the full category
  *   colour and each lower level a weaker mix of it with the page background; only the lowest level
  *   carries a dashed ring;
- * - a link (and the stub into a tree's root) takes the look of the node it leads to;
+ * - a link (and the stub into a tree's root) takes the look of the node it leads to; in the light
+ *   theme the lines and the lowest level's ring take the category colour mixed toward the text ink
+ *   instead, so they keep at least 3:1 against the light background (WCAG 1.4.11);
  * - the level legend shows the same three looks, in order, one swatch per row;
  * - a node draws its hit area, its face and its icon, nothing else; icons are centred on the node
  *   and take the same share of every node.
@@ -18,6 +20,9 @@ type Rgb = [number, number, number];
 
 interface Drawn {
   bg: Rgb;
+  /** The text ink, and the share of the category colour in a light-theme line (--mix-cat-line). */
+  ink: Rgb;
+  lineMix: number;
   nodes: {
     id: string;
     i: string;
@@ -102,8 +107,10 @@ async function drawn(page: Page): Promise<Drawn> {
     };
     // The page background: the colour the level mixes fade toward.
     const bg = resolve('var(--c-bg)');
+    const ink = resolve('var(--c-text)');
+    const lineMix = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--mix-cat-line')) / 100 || 0;
     probe.remove();
-    return { bg, nodes, links, stubs, legend };
+    return { bg, ink, lineMix, nodes, links, stubs, legend };
   });
 }
 
@@ -115,7 +122,15 @@ function share(c: Rgb, cat: Rgb, bg: Rgb): number {
 
 /** Colour rounding of the browser: a mix may land a fraction of a channel step off. */
 const near = (a: number, b: number, tol = 0.02) => Math.abs(a - b) <= tol;
-const sameColour = (a: Rgb, b: Rgb) => a.every((v, i) => Math.abs(v - b[i]) <= 0.6);
+const sameColour = (a: Rgb, b: Rgb, tol = 0.6) => a.every((v, i) => Math.abs(v - b[i]) <= tol);
+/** `s` of `a`, the rest `b` (color-mix in srgb). */
+const mix = (a: Rgb, b: Rgb, s: number): Rgb => [0, 1, 2].map((i) => a[i] * s + b[i] * (1 - s)) as Rgb;
+/** WCAG contrast of two colours. */
+const contrast = (a: Rgb, b: Rgb) => {
+  const lum = (c: Rgb) => c.map((v) => (v / 255 <= 0.04045 ? v / 255 / 12.92 : ((v / 255 + 0.055) / 1.055) ** 2.4)).reduce((s, v, i) => s + v * [0.2126, 0.7152, 0.0722][i], 0);
+  const [hi, lo] = [lum(a), lum(b)].sort((x, y) => y - x);
+  return (hi + 0.05) / (lo + 0.05);
+};
 
 /** The level looks from strongest to weakest, as the wheel names them (data-visual). */
 const LOOKS = ['l3', 'l2', 'l1'] as const;
@@ -148,13 +163,18 @@ for (const theme of ['dark', 'light'] as const) {
     expect(weak, 'the weakest look is fainter than the middle one').toBeLessThan(middle - 0.1);
     expect(weak, 'the weakest look still shows its category').toBeGreaterThan(0.05);
 
-    // Only the weakest look carries a ring, dashed and drawn in its category.
+    // Only the weakest look carries a ring, dashed and drawn in its category (light: in the lines' ink).
+    if (theme === 'light') expect(d.lineMix, '--mix-cat-line').toBeGreaterThan(0);
+    const line = (cat: Rgb) => mix(cat, d.ink, d.lineMix);
     const rings: string[] = [];
     for (const n of d.nodes) {
       const dashed = n.dash !== 'none' && /\d/.test(n.dash);
       if (n.visual === 'l1') {
         if (!dashed || !(n.strokeWidth > 0) || !n.stroke) rings.push(`${n.id}: no dashed ring (${n.dash}, width ${n.strokeWidth})`);
-        else if (!(share(n.stroke, n.cat, d.bg) > weak)) rings.push(`${n.id}: the ring is fainter than the face`);
+        else if (theme === 'light') {
+          if (!sameColour(n.stroke, line(n.cat), 1)) rings.push(`${n.id}: the ring is not in the lines' ink`);
+          else if (contrast(n.stroke, d.bg) < 3) rings.push(`${n.id}: the ring at ${contrast(n.stroke, d.bg).toFixed(2)}:1`);
+        } else if (!(share(n.stroke, n.cat, d.bg) > weak)) rings.push(`${n.id}: the ring is fainter than the face`);
       } else if (n.stroke !== null || dashed) {
         rings.push(`${n.id} (${n.visual}): has a ring (${n.dash})`);
       }
@@ -162,15 +182,25 @@ for (const theme of ['dark', 'light'] as const) {
     expect(rings, 'rings').toEqual([]);
 
     // A link is keyed by the node it leads to (data-i) and draws in that node's face colour; a stub
-    // leads into a tree's root and draws in the full category colour.
+    // leads into a tree's root and draws in the full category colour. In the light theme every line
+    // takes its category colour mixed toward the ink instead, at 3:1 or more.
     const byIndex = new Map(d.nodes.map((n) => [n.i, n]));
     expect(d.links, 'one link per node that is not a root').toHaveLength(d.nodes.length - roots);
-    const badLinks = d.links
-      .filter((l) => !sameColour(l.stroke, byIndex.get(l.i)!.fill))
-      .map((l) => `link to ${byIndex.get(l.i)!.id} (${byIndex.get(l.i)!.visual})`);
-    expect(badLinks, 'a link takes the look of the node it leads to').toEqual([]);
     expect(d.stubs, 'one stub per tree').toHaveLength(roots);
-    expect(d.stubs.map((s) => share(s.stroke, s.cat, d.bg)).filter((s) => !near(s, 1))).toEqual([]);
+    if (theme === 'light') {
+      const badLinks = d.links
+        .filter((l) => !sameColour(l.stroke, line(byIndex.get(l.i)!.cat), 1) || contrast(l.stroke, d.bg) < 3)
+        .map((l) => `link to ${byIndex.get(l.i)!.id}`);
+      expect(badLinks, 'light: every line in the ink, 3:1 or more').toEqual([]);
+      const badStubs = d.stubs.filter((s) => !sameColour(s.stroke, line(s.cat), 1) || contrast(s.stroke, d.bg) < 3);
+      expect(badStubs, 'light: every stub in the ink, 3:1 or more').toEqual([]);
+    } else {
+      const badLinks = d.links
+        .filter((l) => !sameColour(l.stroke, byIndex.get(l.i)!.fill))
+        .map((l) => `link to ${byIndex.get(l.i)!.id} (${byIndex.get(l.i)!.visual})`);
+      expect(badLinks, 'a link takes the look of the node it leads to').toEqual([]);
+      expect(d.stubs.map((s) => share(s.stroke, s.cat, d.bg)).filter((s) => !near(s, 1))).toEqual([]);
+    }
 
     // The legend: three rows, strongest first, each swatch in the matching look; the last one dashed.
     expect(d.legend.rows).toHaveLength(LOOKS.length);

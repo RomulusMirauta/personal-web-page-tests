@@ -233,11 +233,14 @@ test('the header buttons show a visible focus indicator when reached with Tab', 
     const f = await page.evaluate(() => {
       const el = document.activeElement as HTMLElement | null;
       if (!el?.closest('header[data-hud] nav') || el.tagName !== 'BUTTON') return null;
-      const cs = getComputedStyle(el);
+      // The ring is drawn on the button itself or on a pseudo-element around it.
+      const drawn = (cs: CSSStyleDeclaration) =>
+        (cs.outlineStyle !== 'none' && parseFloat(cs.outlineWidth) > 0) || (cs.boxShadow !== 'none' && cs.boxShadow !== '');
+      const ring = getComputedStyle(el, '::before');
       const r = el.getBoundingClientRect();
       return {
         focusVisible: el.matches(':focus-visible'),
-        indicator: (cs.outlineStyle !== 'none' && parseFloat(cs.outlineWidth) > 0) || cs.boxShadow !== 'none',
+        indicator: drawn(getComputedStyle(el)) || (ring.content !== 'none' && drawn(ring)),
         onScreen: r.left >= 0 && r.top >= 0 && r.right <= innerWidth && r.bottom <= innerHeight,
       };
     });
@@ -290,4 +293,34 @@ test('Q and E sit centred in their key caps (glyph ink, 1920×1080)', async ({ p
   expect(Math.abs((eInk.top + eInk.bottom) / 2 - (e.top + e.height / 2)), 'E ink centre vs cap centre').toBeLessThanOrEqual(1);
   // Q's capital starts on the same row (its tail hangs below the baseline).
   expect(Math.abs(inkRows(q).top - q.top - (eInk.top - e.top)), 'Q ink top vs E ink top').toBeLessThanOrEqual(1);
+});
+
+// The focused previous-section button's ring touched the last letter of its label (the button ends
+// where the label's last glyph does).
+test('the focus ring around a side button keeps clear of its label on every side (1920×1080)', { tag: '@a11y' }, async ({ page }) => {
+  await openHeader(page);
+  for (const side of ['previous', 'next'] as const) {
+    const button = page.getByRole('navigation', { name: /sections/i }).getByRole('button', { name: new RegExp(side, 'i') });
+    await button.focus();
+    await page.keyboard.press('Shift'); // keyboard modality: :focus-visible
+    const m = await button.evaluate((el) => {
+      const ring = getComputedStyle(el, '::before');
+      // The label's painted box (it clips its text: an ellipsis, a hidden long form).
+      const ink = el.querySelector('[data-neighbour]')!.getBoundingClientRect();
+      const box = el.getBoundingClientRect();
+      const inset = ring.inset.split(' ').map(parseFloat);
+      const [t, r, b, l] = [inset[0], inset[1] ?? inset[0], inset[2] ?? inset[0], inset[3] ?? inset[1] ?? inset[0]];
+      const outline = parseFloat(ring.outlineWidth);
+      // The ring's inner edge, from the pseudo-element's box.
+      const inner = { left: box.left + l, right: box.right - r, top: box.top + t, bottom: box.bottom - b };
+      return {
+        drawn: ring.content !== 'none' && ring.outlineStyle === 'solid' && outline >= 2,
+        gapLeft: ink.left - inner.left,
+        gapRight: inner.right - ink.right,
+      };
+    });
+    expect(m.drawn, side).toBe(true);
+    expect(m.gapLeft, `${side}: ring → label start`).toBeGreaterThanOrEqual(4);
+    expect(m.gapRight, `${side}: label end → ring`).toBeGreaterThanOrEqual(4);
+  }
 });

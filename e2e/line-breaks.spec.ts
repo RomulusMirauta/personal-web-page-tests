@@ -1,5 +1,5 @@
 import type { Page } from '@playwright/test';
-import { dispatch, openApp, screenOrder, settle, ui } from './support/app';
+import { dispatch, openApp, screenOrder, sectionTitleText, settle, ui } from './support/app';
 import { expect, test } from './support/test';
 
 /**
@@ -75,7 +75,7 @@ for (const [w, h] of [
         await page.evaluate(() => {
           for (const a of document.getAnimations()) if (a.effect?.getTiming().iterations !== Infinity) a.finish();
         });
-        found.push(...(await scan(page, ((await ui.sectionTitle(page).textContent()) ?? '').trim())));
+        found.push(...(await scan(page, await sectionTitleText(page))));
       }
       expect(found).toEqual([]);
     });

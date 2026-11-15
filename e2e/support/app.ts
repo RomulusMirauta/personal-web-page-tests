@@ -167,6 +167,19 @@ export async function screenOrder(page: Page): Promise<Screen[]> {
   return visited.map((_s, i) => visited[(i - Math.max(active, 0) + count) % count]);
 }
 
+/**
+ * The current section's full title. On a narrow phone band the heading also holds a short form of
+ * a long name, hidden from assistive technology; this reads the title without it, as a screen
+ * reader (and the screen's region label) has it.
+ */
+export async function sectionTitleText(page: Page): Promise<string> {
+  return ui.sectionTitle(page).evaluate((el) => {
+    const copy = el.cloneNode(true) as HTMLElement;
+    copy.querySelectorAll('[aria-hidden="true"]').forEach((n) => n.remove());
+    return (copy.textContent ?? '').replace(/\s+/g, ' ').trim();
+  });
+}
+
 /** The section names as the header's dots label them, in header order. */
 export async function sectionNames(page: Page): Promise<string[]> {
   return ui.sectionDots(page).locator('button').evaluateAll((els) => els.map((el) => el.getAttribute('title') ?? ''));

@@ -9,7 +9,7 @@
  */
 
 /** The app's screens, as they appear in URL hashes (#/profile, #/experience, ...). */
-export type Screen = 'profile' | 'lab' | 'skills' | 'experience' | 'projects' | (string & {});
+export type Screen = 'profile' | 'contact' | 'lab' | 'skills' | 'experience' | 'education' | 'projects' | (string & {});
 export type WheelId = 'hard' | 'soft';
 
 export type Mode =
@@ -55,6 +55,7 @@ export interface AppState {
   wheel: WheelId;
   mode: Mode;
   sound: boolean;
+  antialias: boolean;
   cityShown: boolean;
   theme: 'dark' | 'light';
   uiHidden: boolean;

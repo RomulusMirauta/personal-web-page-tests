@@ -178,6 +178,10 @@ test.describe('a screen that comes back is scrolled where it was left', () => {
   }
   const timelineTop = (page: Page) => page.locator(TIMELINE).evaluate((el) => el.scrollTop);
 
+  // A small landscape window (one timeline column), where the timeline scrolls: at 1920×1080 the
+  // work history fits.
+  test.use({ viewport: { width: 853, height: 430 } });
+
   test('next section, then back', { tag: '@critical' }, async ({ page }) => {
     await openApp(page);
     const top = await scrollTimelineToEnd(page);
