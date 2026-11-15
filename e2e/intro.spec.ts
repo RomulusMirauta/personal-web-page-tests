@@ -37,6 +37,7 @@ function installRecorder(page: Page) {
     const log: Sample[] = [];
     window.__introLog = log;
     let last = '';
+    let seen = false;
     const tick = () => {
       const dialog = document.querySelector<HTMLElement>('[role="dialog"][data-phase]');
       const shown = !!dialog && getComputedStyle(dialog).display !== 'none';
@@ -59,7 +60,9 @@ function installRecorder(page: Page) {
         last = key;
         log.push(s);
       }
-      if (!(s.gone && log.length > 1 && !dialog)) requestAnimationFrame(tick);
+      // Stops once the intro has come and gone (not before it mounted: hydration can be slow on CI).
+      if (dialog) seen = true;
+      if (!(seen && s.gone && !dialog)) requestAnimationFrame(tick);
     };
     requestAnimationFrame(tick);
   });
