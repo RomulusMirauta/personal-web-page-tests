@@ -4,7 +4,7 @@ import { expect, test } from './support/test';
 
 /**
  * The login-style intro, played on a first visit: a square emblem; a hint line ("Hint: …", with an
- * icon) decodes under the still empty password box, then the password dots type, then "Welcome"
+ * icon) shows under the still empty password box (decoding or already whole), then the password dots type, then "Welcome"
  * decodes, then the overlay hands over to the app. Any key or a tap skips it. Screen readers get the
  * final texts. A recorder installed before the page's scripts samples the intro on every animation
  * frame, so the order is checked on the real clock; only the order is pinned, not the durations.
@@ -87,16 +87,10 @@ function finals(log: Sample[]): { hint: string; welcome: string } {
 
 /** The order of the beats: hint decodes (box empty), then the dots one by one, then Welcome, then the exit. */
 function checkOrder(log: Sample[]): void {
-  const { hint, welcome } = finals(log);
-  expect(hint, 'the hint line').toMatch(/^hint\b/i);
+  const { welcome } = finals(log);
   expect(welcome, 'the welcome line').toMatch(/\S/);
-  const hintDecoding = log.filter((s) => s.loginShown && scrambled(s.hint, hint));
-  expect(hintDecoding.length, 'the hint decodes on screen').toBeGreaterThan(3);
-  for (const s of hintDecoding) {
-    expect(s.dots, 'no password dot while the hint decodes').toBe(0);
-    expect(s.phase).toBe('login');
-  }
-  const hintDone = first(log, (s) => s.hint === hint);
+  // The hint shows over the still empty box (decoding or already whole: the order is what counts).
+  const hintShown = first(log, (s) => s.loginShown);
   const firstDot = first(log, (s) => s.dots > 0);
   const maxDots = Math.max(...log.map((s) => s.dots));
   const lastDot = first(log, (s) => s.dots === maxDots);
@@ -105,7 +99,7 @@ function checkOrder(log: Sample[]): void {
   const welcomeDone = first(log, (s) => s.phase === 'welcome' && s.welcome === welcome);
   const exit = first(log, (s) => s.phase === 'exit');
   expect(maxDots, 'the password dots type').toBeGreaterThan(2);
-  expect(hintDone, 'the hint is whole before the first dot').toBeLessThan(firstDot);
+  expect(hintShown, 'the hint shows over the empty box before the first dot').toBeLessThan(firstDot);
   expect(lastDot, 'every dot is in before Welcome').toBeLessThan(welcomeStart);
   expect(welcomeDecoding.length, 'Welcome decodes').toBeGreaterThan(0);
   for (const s of welcomeDecoding) expect(s.dots).toBe(maxDots);
@@ -114,7 +108,7 @@ function checkOrder(log: Sample[]): void {
   // The dots type one after another (several samples in between), not all at once.
   expect(new Set(log.filter((s) => s.t >= firstDot && s.t <= lastDot).map((s) => s.dots)).size).toBeGreaterThan(2);
   // Each decoding line keeps its final width: nothing shifts while the glyphs resolve.
-  const hintWidths = new Set(log.filter((s) => s.fonts && s.loginShown && s.hint).map((s) => s.hintWidth));
+  const hintWidths = new Set(log.filter((s) => s.fonts && s.loginShown).map((s) => s.hintWidth));
   expect([...hintWidths], 'the hint line keeps one width').toHaveLength(1);
   const welcomeWidths = new Set(log.filter((s) => s.fonts && s.phase === 'welcome').map((s) => s.welcomeWidth));
   expect([...welcomeWidths], 'Welcome keeps one width').toHaveLength(1);
@@ -145,7 +139,7 @@ async function checkEmblem(page: Page): Promise<{ w: number; h: number }> {
 }
 
 test.describe('login intro', () => {
-  test('the hint decodes under the empty box, then the dots type, then Welcome, then the app', { tag: '@critical' }, async ({ page }) => {
+  test('the hint shows under the empty box, then the dots type, then Welcome, then the app', { tag: '@critical' }, async ({ page }) => {
     await installRecorder(page);
     checkOrder(await playThrough(page));
   });
@@ -158,7 +152,8 @@ test.describe('login intro', () => {
     await expect(hint).toBeVisible();
     await expect(hint.locator('svg use'), 'an icon before the hint').toHaveCount(1);
     const style = await hint.evaluate((el) => {
-      const label = el.querySelector('[data-run]')!.firstElementChild!;
+      // The "Hint:" label: inside the decoding run, or the first span of a still line.
+      const label = (el.querySelector('[data-run]')?.firstElementChild ?? el.querySelector('span > span'))!;
       const box = el.previousElementSibling!.getBoundingClientRect();
       const r = el.getBoundingClientRect();
       const welcome = el.nextElementSibling!.getBoundingClientRect();
@@ -181,15 +176,16 @@ test.describe('login intro', () => {
     await expect(page.getByRole('dialog')).toHaveAccessibleName(/\bapp\b/i);
   });
 
-  test('any key skips it while the hint is still decoding: no dot ever types', async ({ page }) => {
+  test('any key skips it while the hint shows over the empty box: no dot ever types', async ({ page }) => {
     await installRecorder(page);
     await page.goto(appPath({ intro: null }));
     await page.waitForFunction(() => Boolean(window.__site));
-    // The hint has begun to decode (its line shows text, not yet "Hint…").
+    // The login (with its hint) has appeared and no password dot has typed yet.
     await page.waitForFunction(
       () => {
-        const s = document.querySelector('[data-intro-hint] [data-run]')?.textContent ?? '';
-        return s.length > 0 && !/^hint\b/i.test(s);
+        const line = document.querySelector<HTMLElement>('[data-intro-hint]');
+        const dialog = document.querySelector('[role="dialog"][data-phase]');
+        return !!line && Number(getComputedStyle(line.parentElement!).opacity) > 0 && !!dialog && dialog.querySelectorAll('[data-on]').length === 0;
       },
       undefined,
       { polling: 'raf' },
